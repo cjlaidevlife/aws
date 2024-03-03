@@ -1,47 +1,112 @@
-import re
 import boto3
 import logging
+import sys
+import configparser
+import os
 
-def main(): 
-    """透過來源PROFILE上的使用者名稱、MFA設備類型及相對應的MFA TOKEN來產生臨時的SESSION TOKEN.
+
+def main():
+    """Update AWS Shared Configuration Profile.
+
     @BACKGROUND
-      IAM有限制ENABLE MFA DIVICE, 且透過ASSUME ROLE管理MULTI AWS ACCOUNT時的應用場景.
-    @TARGET    
-      不想要每次都得輸入很長的指令, 且可以省去手動寫入SHARED CREDENTIALS FILE.
-    @AUTHOR 
-      CJLAI
+      I can quickly configure the AWS Shared Configuration Profile by MFA Session Token.
+
+    @TARGET
+      replace the AWS Shared Configuration Profile.
+
+    @ARGS
+      * source_profile_name
+      * destination_profile_name
+      * mfa_token_code
+
+    @AUTHOR
+      cjlai
+
     """
 
-    _SOURCE_PROFILE_NAME ='xx'
-    _SOURCE_USER_NAME = 'xxxxxx'
-    _MFA_DEVICES_TYPE = 'google_authenticator'
-    _MFA_TOKEN_CODE = 'xxxxx'
+    try:
+        source_profile_name, destination_profile_name, mfa_token_code = (
+            sys.argv[1],
+            sys.argv[2],
+            sys.argv[3],
+        )
 
-    # 1. 透過SOURCE_PROFILE_NAME建立clinet session
-    init_session = boto3.Session(profile_name=_SOURCE_PROFILE_NAME)
-    iam_clinet = init_session.client('iam')    
+        session = boto3.Session(profile_name=source_profile_name)
+        sts_session_client = session.client("sts")
+        iam_session_client = session.client("iam")
 
-    # 2. 取得SOURCE_USER_NAME的mfa devices判斷是否為MFA_DEVICES_TYPE
-    response = iam_clinet.list_mfa_devices(UserName=_SOURCE_USER_NAME)
-    for obj in response.get('MFADevices'): 
-        if re.search(_MFA_DEVICES_TYPE, obj['SerialNumber']):
-            _serial_number= obj['SerialNumber']
-    
-    # 3. 輸入MFA_TOKEN_CODE取得temporary credentials            
-    sts_client = init_session.client('sts')    
-    sts_response = sts_client.get_session_token(
-        SerialNumber=_serial_number,
-        TokenCode=_MFA_TOKEN_CODE
-    )
-    credentials_info = sts_response.get('Credentials')
+        # get iam user friendly name from user profile
+        identity = sts_session_client.get_caller_identity()
+        current_friendly_name = identity.get("Arn").split("/")[-1]
 
-    # 4. 輸出aws shared credentials file需要寫入的內容
-    print('[session]')
-    print('aws_access_key_id = ' + credentials_info.get('AccessKeyId'))
-    print('aws_secret_access_key = ' + credentials_info.get('SecretAccessKey'))
-    print('aws_session_token=' + credentials_info.get('SessionToken'))
-    
-if __name__ == '__main__':
+        mfa_devices_response = iam_session_client.list_mfa_devices(
+            UserName=current_friendly_name
+        )
+        for mfa_info in mfa_devices_response.get("MFADevices"):
+
+            # get mfa devices from iam user
+            mfa_devices_type = mfa_info.get("SerialNumber").split(":")[5].split("/")[0]
+            current_mfa_device = mfa_info.get("SerialNumber")
+
+            # condition for find first mfa devices
+            if mfa_devices_type == "mfa":
+                sts_response = sts_session_client.get_session_token(
+                    SerialNumber=current_mfa_device, TokenCode=mfa_token_code
+                )
+
+                temporary_session_token = sts_response.get("Credentials")
+                update_credentials(
+                    destination_profile_name,
+                    temporary_session_token.get("AccessKeyId"),
+                    temporary_session_token.get("SecretAccessKey"),
+                    temporary_session_token.get("SessionToken"),
+                )
+                sys.exit()
+
+            else:
+                print("Not Found Devices type is MFA!!")
+
+    except IndexError as index_err:
+        length = len(sys.argv)
+        print(
+            f"Input Argument Error: {index_err}, Argument Count: {length-1}, But We need Count: 3"
+        )
+        sys.exit()
+
+    except Exception as unknow_err:
+        print(f"Unknow Error: {unknow_err}")
+        sys.exit()
+
+
+@staticmethod
+def update_credentials(
+    profile_name: str, new_access_key: str, new_secret_key: str, new_session_token: str
+):
+    """update aws mfa credentials file
+
+    this method from chatgpt prompt:
+
+    How can I replace a specific profile in the AWS credentials file using Python?
+    """
+    credentials_path = "~/.aws/credentials"
+    credentials_path = os.path.expanduser(credentials_path)
+
+    config = configparser.ConfigParser()
+    config.read(credentials_path)
+
+    if profile_name in config:
+        config[profile_name]["aws_access_key_id"] = new_access_key
+        config[profile_name]["aws_secret_access_key"] = new_secret_key
+        config[profile_name]["aws_session_token"] = new_session_token
+
+        with open(credentials_path, "w") as configfile:
+            config.write(configfile)
+        print(f"Profile '{profile_name}' updated successfully.")
+    else:
+        print(f"Profile '{profile_name}' not found in credentials file.")
+
+
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     main()
