@@ -12,6 +12,7 @@ def main():
     logging.info(f"validtion: %s", caller_identity.get("Arn"))
 
     ipam_scope_ids = get_ipam_scope_ids(boto3_session)
+    # TBD: replace get data method by describe_addresses
     public_data = get_cidr_data(boto3_session, ipam_scope_ids[1], "public")
     # TBD: cann't get current private ip address
     private_data = get_cidr_data(boto3_session, ipam_scope_ids[1], "private")
