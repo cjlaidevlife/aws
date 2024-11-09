@@ -89,8 +89,15 @@ def main():
         print(
             f"Input Argument Error: {index_err}, Argument Count: {len(sys.argv) - 1}, But We need Count: 3"
         )
+        
+    except boto3.exceptions.Boto3Error as boto_err:
+        print(f"Boto3 Error: {boto_err}")
+
+    except configparser.Error as config_err:
+        print(f"ConfigParser Error: {config_err}")
+
     except Exception as unknow_err:
-        print(f"Unknown Error: {unknow_err}")
+        print(f"Unexpected Error: {unknow_err}")
 
 
 if __name__ == "__main__":
