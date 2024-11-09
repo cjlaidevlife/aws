@@ -162,7 +162,7 @@ def main():
     except configparser.Error as config_err:
         print(f"ConfigParser Error: {config_err}")
 
-    except Exception as unknow_err:
+    except Exception as unknow_err:   # pylint: disable=W0718
         print(f"Unexpected Error: {unknow_err}")
 
 if __name__ == "__main__":
