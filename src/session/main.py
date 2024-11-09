@@ -11,11 +11,12 @@ Functions:
 - main: Main function to handle AWS session management with MFA.
 """
 
-import boto3
-import logging
 import sys
-import configparser
 import os
+import logging
+import configparser
+
+import boto3
 
 
 def get_aws_session(profile_name):
