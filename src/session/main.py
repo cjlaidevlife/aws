@@ -6,6 +6,15 @@ import os
 
 
 def get_aws_session(profile_name):
+    """
+    Get AWS session clients for STS and IAM.
+
+    Args:
+        profile_name (str): The AWS profile name.
+
+    Returns:
+        tuple: A tuple containing the STS client and IAM client.
+    """
     session = boto3.Session(profile_name=profile_name)
     sts_client = session.client("sts")
     iam_client = session.client("iam")
@@ -13,11 +22,30 @@ def get_aws_session(profile_name):
 
 
 def get_current_user(sts_client):
+    """
+    Get the current AWS user.
+
+    Args:
+        sts_client (object): The STS client.
+
+    Returns:
+        str: The current user name.
+    """
     identity = sts_client.get_caller_identity()
     return identity.get("Arn").split("/")[-1]
 
 
 def get_mfa_device(iam_client, user_name):
+    """
+    Get the MFA device for a user.
+
+    Args:
+        iam_client (object): The IAM client.
+        user_name (str): The user name.
+
+    Returns:
+        str: The MFA device serial number or None if not found.
+    """
     mfa_devices_response = iam_client.list_mfa_devices(UserName=user_name)
     for mfa_info in mfa_devices_response.get("MFADevices"):
         mfa_devices_type = mfa_info.get("SerialNumber").split(":")[5].split("/")[0]
@@ -27,6 +55,17 @@ def get_mfa_device(iam_client, user_name):
 
 
 def get_temporary_session_token(sts_client, mfa_device, mfa_token_code):
+    """
+    Get a temporary session token using MFA.
+
+    Args:
+        sts_client (object): The STS client.
+        mfa_device (str): The MFA device serial number.
+        mfa_token_code (str): The MFA token code.
+
+    Returns:
+        dict: The temporary session credentials.
+    """
     sts_response = sts_client.get_session_token(
         SerialNumber=mfa_device, TokenCode=mfa_token_code
     )
@@ -34,6 +73,15 @@ def get_temporary_session_token(sts_client, mfa_device, mfa_token_code):
 
 
 def update_credentials(profile_name, new_access_key, new_secret_key, new_session_token):
+    """
+    Update AWS credentials for a profile.
+
+    Args:
+        profile_name (str): The AWS profile name.
+        new_access_key (str): The new access key.
+        new_secret_key (str): The new secret key.
+        new_session_token (str): The new session token.
+    """
     credentials_path = os.path.expanduser("~/.aws/credentials")
     config = configparser.ConfigParser()
     config.read(credentials_path)
