@@ -43,7 +43,7 @@ def update_credentials(profile_name, new_access_key, new_secret_key, new_session
         config[profile_name]["aws_secret_access_key"] = new_secret_key
         config[profile_name]["aws_session_token"] = new_session_token
 
-        with open(credentials_path, "w") as configfile:
+        with open(credentials_path, "w", encoding="utf-8") as configfile:
             config.write(configfile)
         print(f"Profile '{profile_name}' updated successfully.")
     else:
