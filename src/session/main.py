@@ -1,3 +1,16 @@
+"""
+This module provides functions to manage AWS sessions and credentials
+with Multi-Factor Authentication (MFA).
+
+Functions:
+- get_aws_session: Get AWS session clients for STS and IAM.
+- get_current_user: Get the current AWS user.
+- get_mfa_device: Get the MFA device for a user.
+- get_temporary_session_token: Get a temporary session token using MFA.
+- update_credentials: Update AWS credentials for a profile.
+- main: Main function to handle AWS session management with MFA.
+"""
+
 import boto3
 import logging
 import sys
@@ -103,7 +116,8 @@ def main():
     Main function to handle AWS session management with MFA.
 
     This function performs the following steps:
-    1. Parses command-line arguments to get source profile name, destination profile name, and MFA token code.
+    1. Parses command-line arguments to get source profile name, destination profile name,
+       and MFA token code.
     2. Retrieves AWS session clients for STS and IAM using the source profile.
     3. Gets the current user and their MFA device.
     4. If an MFA device is found, it obtains a temporary session token using the MFA token code.
@@ -135,9 +149,11 @@ def main():
 
     except IndexError as index_err:
         print(
-            f"Input Argument Error: {index_err}, Argument Count: {len(sys.argv) - 1}, But We need Count: 3"
+            f"""Input Argument Error: {index_err}, 
+            Argument Count: {len(sys.argv) - 1}, 
+            But We need Count: 3"""
         )
-        
+
     except boto3.exceptions.Boto3Error as boto_err:
         print(f"Boto3 Error: {boto_err}")
 
