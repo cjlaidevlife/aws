@@ -126,7 +126,8 @@ def main():
 
     Exceptions:
         IndexError: Raised when the required command-line arguments are not provided.
-        Exception: Catches any other exceptions and prints an error message.
+        boto3.exceptions.Boto3Error: Catches specific boto3 exceptions.
+        configparser.Error: Catches specific configparser exceptions.
     """
     try:
         source_profile_name, destination_profile_name, mfa_token_code = sys.argv[1:4]
@@ -163,7 +164,6 @@ def main():
 
     except Exception as unknow_err:
         print(f"Unexpected Error: {unknow_err}")
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
